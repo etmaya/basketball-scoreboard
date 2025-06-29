@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Basketball Scoreboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    input[type="text"] { width: 100%; box-sizing: border-box; }
+    button { padding: 4px 8px; }
+    #team-totals { margin-bottom: 15px; font-size: 1.2em; }
+    #team-totals span { margin-right: 20px; }
+  </style>
+</head>
+<body>
+
+<h2>Basketball Scoreboard (Single Side)</h2>
+
+<div id="team-totals">
+  <span>Team Points: <strong id="team-points">0</strong></span>
+  <span>Team Fouls: <strong id="team-fouls">0</strong></span>
+</div>
+
+<table id="scoreboard">
+  <thead>
+    <tr>
+      <th>Player Name</th>
+      <th>Points</th>
+      <th>Fouls</th>
+      <th>Rebounds</th>
+    </tr>
+  </thead>
+  <tbody id="players">
+    <tr>
+      <td><input type="text" class="player-name" oninput="checkNewLine(this)"/></td>
+      <td>
+        <button onclick="changeStat(this, 'points', 1)">+1</button>
+        <span class="points">0</span>
+        <button onclick="changeStat(this, 'points', -1)">-1</button>
+      </td>
+      <td>
+        <button onclick="changeStat(this, 'fouls', 1)">+1</button>
+        <span class="fouls">0</span>
+        <button onclick="changeStat(this, 'fouls', -1)">-1</button>
+      </td>
+      <td>
+        <button onclick="changeStat(this, 'rebounds', 1)">+1</button>
+        <span class="rebounds">0</span>
+        <button onclick="changeStat(this, 'rebounds', -1)">-1</button>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+function checkNewLine(input) {
+  const row = input.closest('tr');
+  const tbody = document.getElementById('players');
+  const lastRow = tbody.lastElementChild;
+  if (row === lastRow && input.value.trim() !== '') {
+    const newRow = row.cloneNode(true);
+    newRow.querySelector('.player-name').value = '';
+    newRow.querySelectorAll('span').forEach(span => span.textContent = '0');
+    tbody.appendChild(newRow);
+  }
+  saveData();
+}
+
+function changeStat(button, statClass, delta) {
+  const row = button.closest('tr');
+  const statSpan = row.querySelector(`.${statClass}`);
+  let value = parseInt(statSpan.textContent);
+  value = Math.max(0, value + delta);
+  statSpan.textContent = value;
+  updateTeamTotals();
+  saveData();
+}
+
+function updateTeamTotals() {
+  const players = document.querySelectorAll('#players tr');
+  let totalPoints = 0;
+  let totalFouls = 0;
+  players.forEach(row => {
+    const points = parseInt(row.querySelector('.points').textContent) || 0;
+    const fouls = parseInt(row.querySelector('.fouls').textContent) || 0;
+    totalPoints += points;
+    totalFouls += fouls;
+  });
+  document.getElementById('team-points').textContent = totalPoints;
+  document.getElementById('team-fouls').textContent = totalFouls;
+}
+
+function saveData() {
+  const data = [];
+  document.querySelectorAll('#players tr').forEach(row => {
+    const name = row.querySelector('.player-name').value.trim();
+    const points = parseInt(row.querySelector('.points').textContent) || 0;
+    const fouls = parseInt(row.querySelector('.fouls').textContent) || 0;
+    const rebounds = parseInt(row.querySelector('.rebounds').textContent) || 0;
+    data.push({ name, points, fouls, rebounds });
+  });
+  localStorage.setItem('scoreboardData', JSON.stringify(data));
+}
+
+function loadData() {
+  const saved = localStorage.getItem('scoreboardData');
+  if (!saved) return;
+  const data = JSON.parse(saved);
+  const tbody = document.getElementById('players');
+  tbody.innerHTML = ''; // Clear existing rows
+  data.forEach(player => {
+    const newRow = createPlayerRow(player.name, player.points, player.fouls, player.rebounds);
+    tbody.appendChild(newRow);
+  });
+  const lastRow = createPlayerRow('', 0, 0, 0);
+  tbody.appendChild(lastRow);
+  updateTeamTotals();
+}
+
+function createPlayerRow(name, points, fouls, rebounds) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="player-name" value="${name}" oninput="checkNewLine(this)"/></td>
+    <td>
+      <button onclick="changeStat(this, 'points', 1)">+1</button>
+      <span class="points">${points}</span>
+      <button onclick="changeStat(this, 'points', -1)">-1</button>
+    </td>
+    <td>
+      <button onclick="changeStat(this, 'fouls', 1)">+1</button>
+      <span class="fouls">${fouls}</span>
+      <button onclick="changeStat(this, 'fouls', -1)">-1</button>
+    </td>
+    <td>
+      <button onclick="changeStat(this, 'rebounds', 1)">+1</button>
+      <span class="rebounds">${rebounds}</span>
+      <button onclick="changeStat(this, 'rebounds', -1)">-1</button>
+    </td>
+  `;
+  return tr;
+}
+
+// Load data when the page is loaded
+window.addEventListener('DOMContentLoaded', loadData);
+</script>
+
+</body>
+</html>
