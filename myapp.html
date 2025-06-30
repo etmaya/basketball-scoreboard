@@ -1,150 +1,398 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Basketball Scoreboard</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    input[type="text"] { width: 100%; box-sizing: border-box; }
-    button { padding: 4px 8px; }
-    #team-totals { margin-bottom: 15px; font-size: 1.2em; }
-    #team-totals span { margin-right: 20px; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Basketball Lineup - Correct Minutes Tracking</title>
+<style>
+body { font-family: sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
+h2 { margin: 20px 0 10px; }
+.section { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+.slot, .bench-player { display: flex; align-items: center; background: #fff; border-radius: 8px; margin-bottom: 10px; padding: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); cursor: grab; flex-wrap: wrap; }
+.slot.empty { background: #f0f0f0; color: #aaa; cursor: default; }
+.drag-over { outline: 2px dashed #2196F3; }
+.trash-zone { display:none; justify-content:center; align-items:center; background:#eee; text-align:center; padding:20px; font-size:1.2em; border-radius:10px; transition: background 0.3s; margin-top:20px; }
+.trash-zone.drag-over-trash { background:#f44336; color:white; }
+.player-info { flex-grow: 1; font-weight: bold; }
+#team-totals { background: white; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+#team-totals p { font-size:1.2em; margin:0; }
+#quarter-display { font-size: 1.2em; margin-top: 5px; }
+</style>
 </head>
 <body>
 
-<h2>Basketball Scoreboard (Single Side)</h2>
-
-<div id="team-totals">
-  <span>Team Points: <strong id="team-points">0</strong></span>
-  <span>Team Fouls: <strong id="team-fouls">0</strong></span>
+<div id="team-totals" class="section">
+  <h2>Team Totals</h2>
+  <p>Points: <span id="total-points">0</span> | Fouls: <span id="total-fouls">0</span></p>
+  <button onclick="startGame()" id="start-game">Start Game</button>
+  <div id="quarter-display">Quarter: <span id="current-quarter">1</span>
+    <button onclick="nextQuarter()" id="quarter-button" style="display:none;">Next Quarter</button>
+  </div>
 </div>
 
-<table id="scoreboard">
-  <thead>
-    <tr>
-      <th>Player Name</th>
-      <th>Points</th>
-      <th>Fouls</th>
-      <th>Rebounds</th>
-    </tr>
-  </thead>
-  <tbody id="players">
-    <tr>
-      <td><input type="text" class="player-name" oninput="checkNewLine(this)"/></td>
-      <td>
-        <button onclick="changeStat(this, 'points', 1)">+1</button>
-        <span class="points">0</span>
-        <button onclick="changeStat(this, 'points', -1)">-1</button>
-      </td>
-      <td>
-        <button onclick="changeStat(this, 'fouls', 1)">+1</button>
-        <span class="fouls">0</span>
-        <button onclick="changeStat(this, 'fouls', -1)">-1</button>
-      </td>
-      <td>
-        <button onclick="changeStat(this, 'rebounds', 1)">+1</button>
-        <span class="rebounds">0</span>
-        <button onclick="changeStat(this, 'rebounds', -1)">-1</button>
-      </td>
-    </tr>
-  </tbody>
-</table>
+<div class="section">
+  <h2>On the Court</h2>
+  <div id="court"></div>
+</div>
+
+<button onclick="showAddPlayerPopup()" style="margin-bottom:10px;">Add Player</button>
+
+<div class="section">
+  <h2>Bench</h2>
+  <div id="bench"></div>
+</div>
+
+<div id="popup-bg" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;">
+  <div style="background:white;padding:20px;border-radius:8px;min-width:250px;">
+    <h3>Add Player</h3>
+    <label>Player Name:<br><input type="text" id="new-player-name" style="width:100%;"></label>
+    <label>Player Number:<br><input type="number" id="new-player-number" style="width:100%;"></label>
+    <div style="margin-top:10px;display:flex;justify-content:space-between;">
+      <button onclick="addPlayerFromPopup()">Add</button>
+      <button onclick="hideAddPlayerPopup()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="trash-zone" class="trash-zone">
+  🗑️ Drop here to delete player
+</div>
+<div id="stats-popup" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;">
+  <div style="background:white;padding:20px;border-radius:8px;max-width:400px;width:90%;">
+    <h3 id="popup-player-name"></h3>
+    <div id="popup-totals" style="margin-bottom:10px;font-size:0.95em;color:#555;"></div>
+
+    <div class="section">
+      <h4>Points</h4>
+      <button onclick="changeTempStat('points',1)">+1</button>
+      <button onclick="changeTempStat('points',2)">+2</button>
+      <button onclick="changeTempStat('points',3)">+3</button>
+      <button onclick="changeTempStat('points',-1)">-1</button>
+    </div>
+
+    <div class="section">
+      <h4>Fouls</h4>
+      <button class="foul-btn" onclick="setTempFouls(1)">1</button>
+      <button class="foul-btn" onclick="setTempFouls(2)">2</button>
+      <button class="foul-btn" onclick="setTempFouls(3)">3</button>
+      <button class="foul-btn" onclick="setTempFouls(4)">4</button>
+      <button class="foul-btn" onclick="setTempFouls(5)">5</button>
+    </div>
+
+    <div class="section">
+      <h4>Rebounds</h4>
+      <button onclick="changeTempStat('rebounds',1)">+1</button>
+      <button onclick="changeTempStat('rebounds',-1)">-1</button>
+    </div>
+
+    <div class="section">
+      <h4>Blocks</h4>
+      <button onclick="changeTempStat('blocks',1)">+1</button>
+      <button onclick="changeTempStat('blocks',-1)">-1</button>
+    </div>
+
+    <div class="section">
+      <h4>Steals</h4>
+      <button onclick="changeTempStat('steals',1)">+1</button>
+      <button onclick="changeTempStat('steals',-1)">-1</button>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:15px;">
+      <button onclick="confirmStats()">Confirm</button>
+      <button onclick="closeStatsPopup()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
-function checkNewLine(input) {
-  const row = input.closest('tr');
-  const tbody = document.getElementById('players');
-  const lastRow = tbody.lastElementChild;
-  if (row === lastRow && input.value.trim() !== '') {
-    const newRow = row.cloneNode(true);
-    newRow.querySelector('.player-name').value = '';
-    newRow.querySelectorAll('span').forEach(span => span.textContent = '0');
-    tbody.appendChild(newRow);
+const positions = ["PG", "SG", "SF", "PF", "C"];
+let courtSlots = [null, null, null, null, null];
+let benchPlayers = [];
+let dragged = null;
+let gameStarted = false;
+let currentQuarter = 1;
+
+function render() {
+  document.getElementById('current-quarter').textContent = currentQuarter;
+
+  const court = document.getElementById('court');
+  court.innerHTML = '';
+  courtSlots.forEach((player, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.addEventListener('dragover', e => { e.preventDefault(); clearHighlights(); slot.classList.add('drag-over'); });
+    slot.addEventListener('drop', () => { handleDropOnCourt(i); hideTrash(); });
+    if (player) {
+      let section = 'court';
+      slot.innerHTML = `
+        <div class="drag-handle" draggable="true" ondragstart="startDrag('${section}',${i})">&#x2630;</div>
+        <div class="player-info">
+          ${positions[i]} - #${player.number} - ${player.name}
+          <div style="font-weight:normal;font-size:0.9em;">
+            Last change: ${player.lastChangeTime || "N/A"} | Total minutes: ${player.totalMinutes.toFixed(1)}
+          </div>
+          <div style="font-weight:normal;font-size:0.9em;color:#555;">
+            Points: ${player.points} |
+            Fouls: ${player.fouls.filter(f=>f).length} |
+            Rebounds: ${player.rebounds} |
+            Blocks: ${(player.blocks||0)} |
+            Steals: ${(player.steals||0)}
+          </div>
+        </div>`;
+      const plusBtn = document.createElement('div');
+      plusBtn.className = 'plus-button';
+      plusBtn.textContent = '➕';
+      plusBtn.onclick = () => openStatsPopup(player);
+      slot.appendChild(plusBtn);
+    } else {
+      slot.classList.add('empty');
+      slot.innerHTML = `<div class="player-info">${positions[i]} - Empty Slot</div>`;
+    }
+    court.appendChild(slot);
+  });
+
+  const bench = document.getElementById('bench');
+  bench.innerHTML = '';
+  benchPlayers.forEach((player, i) => {
+    const benchCard = document.createElement('div');
+    benchCard.className = 'bench-player';
+    benchCard.draggable = true;
+    benchCard.ondragstart = () => startDrag('bench', i);
+    benchCard.addEventListener('dragover', e => { e.preventDefault(); clearHighlights(); benchCard.classList.add('drag-over'); });
+    benchCard.addEventListener('drop', () => { handleDropOnBench(i); hideTrash(); });
+
+    let section = 'bench';
+    benchCard.innerHTML = `
+      <div class="drag-handle">&#x2630;</div>
+      <div class="player-info">
+        - - #${player.number} - ${player.name}
+        <div style="font-weight:normal;font-size:0.9em;">
+          Last change: ${player.lastChangeTime || "N/A"} | Total minutes: ${player.totalMinutes.toFixed(1)}
+        </div>
+        <div style="font-weight:normal;font-size:0.9em;color:#555;">
+          Points: ${player.points} |
+          Fouls: ${player.fouls.filter(f=>f).length} |
+          Rebounds: ${player.rebounds} |
+          Blocks: ${(player.blocks||0)} |
+          Steals: ${(player.steals||0)}
+        </div>
+      </div>`;
+    const plusBtn = document.createElement('div');
+    plusBtn.className = 'plus-button';
+    plusBtn.textContent = '➕';
+    plusBtn.onclick = () => openStatsPopup(player);
+    benchCard.appendChild(plusBtn);
+
+    bench.appendChild(benchCard);
+  });
+
+  const emptyBenchSlot = document.createElement('div');
+  emptyBenchSlot.className = 'bench-player slot empty';
+  emptyBenchSlot.addEventListener('dragover', e => { e.preventDefault(); clearHighlights(); emptyBenchSlot.classList.add('drag-over'); });
+  emptyBenchSlot.addEventListener('drop', () => { handleDropOnBench(benchPlayers.length); hideTrash(); });
+  emptyBenchSlot.innerHTML = `<div class="player-info">Empty Bench Slot</div>`;
+  bench.appendChild(emptyBenchSlot);
+
+  updateTeamTotals();
+}
+
+
+function clearHighlights() { document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over')); }
+function startDrag(from, idx) { dragged = {from, idx}; document.getElementById('trash-zone').style.display='flex'; }
+function hideTrash() { document.getElementById('trash-zone').style.display='none'; }
+
+function handleDropOnCourt(targetIdx) {
+  clearHighlights(); if (!dragged) return;
+  if (dragged.from === 'court') {
+    const temp = courtSlots[targetIdx];
+    courtSlots[targetIdx] = courtSlots[dragged.idx];
+    courtSlots[dragged.idx] = temp;
+  } else if (dragged.from === 'bench') {
+    let minute = null;
+    if (gameStarted) {
+      minute = prompt("Enter minute of this substitution:");
+      if (minute === null || minute.trim() === "") return;
+      minute = parseFloat(minute);
+      if (isNaN(minute)) return alert("Invalid minute entered.");
+    }
+    const benchPlayer = benchPlayers[dragged.idx];
+    if (courtSlots[targetIdx]) {
+      const courtPlayer = courtSlots[targetIdx];
+      benchPlayers[dragged.idx] = courtPlayer;
+      courtSlots[targetIdx] = benchPlayer;
+      calculateMinutesPlayed(courtPlayer, minute);
+      updatePlayerChangeTime(benchPlayer, minute);
+      updatePlayerChangeTime(courtPlayer, minute);
+    } else {
+      benchPlayers.splice(dragged.idx,1);
+      courtSlots[targetIdx] = benchPlayer;
+      updatePlayerChangeTime(benchPlayer, minute);
+    }
   }
-  saveData();
+  dragged=null; render();
 }
 
-function changeStat(button, statClass, delta) {
-  const row = button.closest('tr');
-  const statSpan = row.querySelector(`.${statClass}`);
-  let value = parseInt(statSpan.textContent);
-  value = Math.max(0, value + delta);
-  statSpan.textContent = value;
-  updateTeamTotals();
-  saveData();
+function handleDropOnBench(targetIdx) {
+  clearHighlights(); if (!dragged) return;
+  if (dragged.from === 'bench') {
+    if (targetIdx < benchPlayers.length) {
+      const temp = benchPlayers[targetIdx];
+      benchPlayers[targetIdx] = benchPlayers[dragged.idx];
+      benchPlayers[dragged.idx] = temp;
+    }
+  } else if (dragged.from === 'court') {
+    let minute = null;
+    if (gameStarted) {
+      minute = prompt("Enter minute of this substitution:");
+      if (minute === null || minute.trim() === "") return;
+      minute = parseFloat(minute);
+      if (isNaN(minute)) return alert("Invalid minute entered.");
+    }
+    const courtPlayer = courtSlots[dragged.idx];
+    if (targetIdx < benchPlayers.length) {
+      const benchPlayer = benchPlayers[targetIdx];
+      benchPlayers[targetIdx] = courtPlayer;
+      courtSlots[dragged.idx] = benchPlayer;
+      calculateMinutesPlayed(courtPlayer, minute);
+      updatePlayerChangeTime(benchPlayer, minute);
+      updatePlayerChangeTime(courtPlayer, minute);
+    } else {
+      courtSlots[dragged.idx] = null;
+      benchPlayers.push(courtPlayer);
+      calculateMinutesPlayed(courtPlayer, minute);
+      updatePlayerChangeTime(courtPlayer, minute);
+    }
+  }
+  dragged=null; render();
 }
 
-function updateTeamTotals() {
-  const players = document.querySelectorAll('#players tr');
-  let totalPoints = 0;
-  let totalFouls = 0;
-  players.forEach(row => {
-    const points = parseInt(row.querySelector('.points').textContent) || 0;
-    const fouls = parseInt(row.querySelector('.fouls').textContent) || 0;
-    totalPoints += points;
-    totalFouls += fouls;
+function calculateMinutesPlayed(player, subMin) {
+  if (!player || !player.lastEntryQuarter || player.lastEntryMinute == null || subMin == null) return;
+  const entryQ = player.lastEntryQuarter, entryM = player.lastEntryMinute;
+  const subQ = currentQuarter;
+  let minutes = 0;
+  if (subQ === entryQ) {
+    minutes = subMin - entryM;
+  } else if (subQ > entryQ) {
+    minutes = (10 - entryM) + (subQ - entryQ - 1) * 10 + subMin;
+  }
+  if (minutes > 0) player.totalMinutes += minutes;
+}
+
+function updatePlayerChangeTime(player, minute) {
+  if (minute !== null && minute !== "" && player) {
+    player.lastChangeTime = `Q${currentQuarter}, Min ${minute}`;
+    player.lastEntryQuarter = currentQuarter;
+    player.lastEntryMinute = parseFloat(minute);
+  }
+}
+function nextQuarter() {
+  if (currentQuarter < 4) {
+    currentQuarter++;
+    if (currentQuarter == 4) {
+      document.getElementById('quarter-button').textContent = "End Game";
+    }
+  } else {
+    // End game: finalize minutes for players on court
+    courtSlots.forEach(player => {
+      if (player) calculateMinutesPlayed(player, 10);
+    });
+    document.getElementById('quarter-button').disabled = true;
+    alert("Game ended! Final stats recorded.");
+  }
+  render();
+}
+function startGame() {
+  if (courtSlots.some(p => !p)) return alert('You must have 5 players on the court to start the game.');
+  courtSlots.forEach(p => {
+    if (p) {
+      p.lastEntryQuarter = currentQuarter;
+      p.lastEntryMinute = 0;
+      p.lastChangeTime = `Q${currentQuarter}, Min 0`;
+    }
   });
-  document.getElementById('team-points').textContent = totalPoints;
-  document.getElementById('team-fouls').textContent = totalFouls;
+  gameStarted = true;
+  document.getElementById('start-game').disabled = true;
+  document.getElementById('quarter-button').style.display = 'inline'; // <-- SHOWS BUTTON
+  alert('Game started!');
+  render();
+}
+let activePlayer = null;
+let tempStats = {};
+
+function openStatsPopup(player) {
+  activePlayer = findPlayer(player.number);
+  if (!activePlayer) return alert("Player not found!");
+  tempStats = {points:0, rebounds:0, blocks:0, steals:0, fouls:activePlayer.fouls.filter(f=>f).length};
+  document.getElementById('popup-player-name').textContent = `Update Stats: #${activePlayer.number} - ${activePlayer.name}`;
+  updatePopupTotals();
+  document.getElementById('stats-popup').style.display='flex';
 }
 
-function saveData() {
-  const data = [];
-  document.querySelectorAll('#players tr').forEach(row => {
-    const name = row.querySelector('.player-name').value.trim();
-    const points = parseInt(row.querySelector('.points').textContent) || 0;
-    const fouls = parseInt(row.querySelector('.fouls').textContent) || 0;
-    const rebounds = parseInt(row.querySelector('.rebounds').textContent) || 0;
-    data.push({ name, points, fouls, rebounds });
-  });
-  localStorage.setItem('scoreboardData', JSON.stringify(data));
-}
 
-function loadData() {
-  const saved = localStorage.getItem('scoreboardData');
-  if (!saved) return;
-  const data = JSON.parse(saved);
-  const tbody = document.getElementById('players');
-  tbody.innerHTML = ''; // Clear existing rows
-  data.forEach(player => {
-    const newRow = createPlayerRow(player.name, player.points, player.fouls, player.rebounds);
-    tbody.appendChild(newRow);
-  });
-  const lastRow = createPlayerRow('', 0, 0, 0);
-  tbody.appendChild(lastRow);
-  updateTeamTotals();
-}
-
-function createPlayerRow(name, points, fouls, rebounds) {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="text" class="player-name" value="${name}" oninput="checkNewLine(this)"/></td>
-    <td>
-      <button onclick="changeStat(this, 'points', 1)">+1</button>
-      <span class="points">${points}</span>
-      <button onclick="changeStat(this, 'points', -1)">-1</button>
-    </td>
-    <td>
-      <button onclick="changeStat(this, 'fouls', 1)">+1</button>
-      <span class="fouls">${fouls}</span>
-      <button onclick="changeStat(this, 'fouls', -1)">-1</button>
-    </td>
-    <td>
-      <button onclick="changeStat(this, 'rebounds', 1)">+1</button>
-      <span class="rebounds">${rebounds}</span>
-      <button onclick="changeStat(this, 'rebounds', -1)">-1</button>
-    </td>
+function updatePopupTotals() {
+  const totalsDiv = document.getElementById('popup-totals');
+  totalsDiv.innerHTML = `
+    Points: <b>${activePlayer.points + tempStats.points}</b> |
+    Fouls: <b>${tempStats.fouls}</b> |
+    Rebounds: <b>${activePlayer.rebounds + tempStats.rebounds}</b> |
+    Blocks: <b>${(activePlayer.blocks||0) + tempStats.blocks}</b> |
+    Steals: <b>${(activePlayer.steals||0) + tempStats.steals}</b>
   `;
-  return tr;
+  document.querySelectorAll('.foul-btn').forEach((btn, idx) => {
+    btn.style.background = (idx+1 <= tempStats.fouls) ? '#ffc107' : '';
+  });
 }
 
-// Load data when the page is loaded
-window.addEventListener('DOMContentLoaded', loadData);
-</script>
+function closeStatsPopup() {
+  activePlayer = null;
+  document.getElementById('stats-popup').style.display='none';
+}
 
+function changeTempStat(stat, delta) {
+  if (tempStats[stat]==undefined) tempStats[stat]=0;
+  tempStats[stat]+=delta;
+  updatePopupTotals();
+}
+
+function setTempFouls(value) {
+  tempStats.fouls = value;
+  updatePopupTotals();
+}
+
+function confirmStats() {
+  if (!activePlayer) return;
+  activePlayer.points += tempStats.points;
+  if (activePlayer.points<0) activePlayer.points=0;
+  activePlayer.rebounds += tempStats.rebounds;
+  if (activePlayer.rebounds<0) activePlayer.rebounds=0;
+  activePlayer.blocks = (activePlayer.blocks||0) + tempStats.blocks;
+  if (activePlayer.blocks<0) activePlayer.blocks=0;
+  activePlayer.steals = (activePlayer.steals||0) + tempStats.steals;
+  if (activePlayer.steals<0) activePlayer.steals=0;
+  activePlayer.fouls = [false,false,false,false,false];
+  for (let i=0;i<tempStats.fouls;i++) activePlayer.fouls[i]=true;
+  closeStatsPopup();
+  render();
+}
+
+function findPlayer(number) {
+  return [...courtSlots, ...benchPlayers].find(p=>p && p.number==number);
+}
+
+
+function updateTeamTotals() { let pts=0, fls=0; [...courtSlots,...benchPlayers].forEach(p=>{if(p){pts+=p.points;fls+=p.fouls?.filter(f=>f).length;}}); document.getElementById('total-points').textContent=pts; document.getElementById('total-fouls').textContent=fls; }
+function showAddPlayerPopup() { document.getElementById('popup-bg').style.display='flex'; setTimeout(()=>document.getElementById('new-player-name').focus(),100); }
+function hideAddPlayerPopup() { document.getElementById('popup-bg').style.display='none'; document.getElementById('new-player-name').value=''; document.getElementById('new-player-number').value=''; }
+function addPlayerFromPopup() { const name=document.getElementById('new-player-name').value.trim(); const num=document.getElementById('new-player-number').value.trim(); if(!name||!num)return alert('Please enter both name and number!'); const exists=[...courtSlots,...benchPlayers].some(p=>p&&p.number==num); if(exists)return alert('A player with this number already exists!'); benchPlayers.push({name,number:num,points:0,rebounds:0,fouls:[false,false,false,false,false],totalMinutes:0,lastChangeTime:null}); hideAddPlayerPopup(); render(); }
+
+const trash=document.getElementById('trash-zone');
+trash.addEventListener('dragover',e=>{e.preventDefault();trash.classList.add('drag-over-trash');});
+trash.addEventListener('dragleave',()=>trash.classList.remove('drag-over-trash'));
+trash.addEventListener('drop',()=>{trash.classList.remove('drag-over-trash');if(!dragged)return;if(confirm('Are you sure you want to delete this player?')){if(dragged.from==='court')courtSlots[dragged.idx]=null;else benchPlayers.splice(dragged.idx,1);}dragged=null;hideTrash();render();});
+
+render();
+</script>
 </body>
 </html>
