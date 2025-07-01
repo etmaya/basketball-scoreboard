@@ -329,7 +329,9 @@ function openStatsPopup(player) {
   document.getElementById('popup-player-name').textContent = `Update Stats: #${activePlayer.number} - ${activePlayer.name}`;
   updatePopupTotals();
   document.getElementById('stats-popup').style.display='flex';
+  history.pushState({popup: true}, '', location.href); // push state
 }
+
 
 
 function updatePopupTotals() {
@@ -349,7 +351,6 @@ function updatePopupTotals() {
 function closeStatsPopup() {
   activePlayer = null;
   document.getElementById('stats-popup').style.display='none';
-  history.back(); // remove the pushed history entry
 }
 
 function changeTempStat(stat, delta) {
@@ -395,11 +396,12 @@ trash.addEventListener('dragleave',()=>trash.classList.remove('drag-over-trash')
 trash.addEventListener('drop',()=>{trash.classList.remove('drag-over-trash');if(!dragged)return;if(confirm('Are you sure you want to delete this player?')){if(dragged.from==='court')courtSlots[dragged.idx]=null;else benchPlayers.splice(dragged.idx,1);}dragged=null;hideTrash();render();});
 
 render();
-window.addEventListener('popstate', () => {
-  if (document.getElementById('stats-popup').style.display === 'flex') {
+window.addEventListener('popstate', (event) => {
+  if (event.state && event.state.popup) {
     closeStatsPopup();
   }
 });
+
 </script>
 </body>
 </html>
