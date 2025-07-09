@@ -161,7 +161,7 @@ function render() {
       slot.innerHTML = `
         <div class="drag-handle" draggable="true" ondragstart="startDrag('court',${i})">&#x2630;</div>
         <div class="player-info">
-          #${player.number} - ${player.name}
+          ${positions[i]} - #${player.number} - ${player.name}
           <div style="font-weight:normal;font-size:0.9em;">
             Last change: ${player.lastChangeTime || "N/A"} | Total minutes: ${player.totalMinutes.toFixed(1)}
           </div>
@@ -201,7 +201,7 @@ function render() {
     benchCard.innerHTML = `
       <div class="drag-handle">&#x2630;</div>
       <div class="player-info">
-        - - #${player.number} - ${player.name}
+        #${player.number} - ${player.name}
         <div style="font-weight:normal;font-size:0.9em;">
           Last change: ${player.lastChangeTime || "N/A"} | Total minutes: ${player.totalMinutes.toFixed(1)}
         </div>
