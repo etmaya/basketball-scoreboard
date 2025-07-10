@@ -17,6 +17,31 @@ h2 { margin: 20px 0 10px; }
 #team-totals { background: white; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
 #team-totals p { font-size:1.2em; margin:0; }
 #quarter-display { font-size: 1.2em; margin-top: 5px; }
+.stats-button {
+  padding: 10px 16px;
+  margin: 5px;
+  font-size: 1.1em;
+  border: none;
+  border-radius: 12px;
+  background-color: #e0e0e0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.stats-button:hover {
+  background-color: #d5d5d5;
+}
+.foul-btn {
+  padding: 10px 14px;
+  margin: 5px;
+  font-size: 1.1em;
+  border: none;
+  border-radius: 12px;
+  background-color: #e0e0e0;
+  cursor: pointer;
+}
+.foul-btn:hover {
+  background-color: #ffc107;
+}
 </style>
 </head>
 <body>
@@ -81,15 +106,19 @@ h2 { margin: 20px 0 10px; }
     <div id="popup-totals" style="margin-bottom:10px;font-size:0.95em;color:#555;"></div>
 
     <div class="section">
-      <h4>Points</h4>
-      <button onclick="changeTempStat('points',1)">+1</button>
-      <button onclick="changeTempStat('points',2)">+2</button>
-      <button onclick="changeTempStat('points',3)">+3</button>
-      <button onclick="changeTempStat('points',-1)">-1</button>
+      Points
+      <button class="stats-button" onclick="changeTempStat('points',1)">+1</button>
+      <button class="stats-button" onclick="changeTempStat('points',2)">+2</button>
+      <button class="stats-button" onclick="changeTempStat('points',3)">+3</button>
+      <button class="stats-button" onclick="changeTempStat('points',-1)">-1</button>
     </div>
-
     <div class="section">
-      <h4>Fouls</h4>
+      Assists
+      <button class="stats-button" onclick="changeTempStat('assists',1)">+1</button>
+      <button class="stats-button" onclick="changeTempStat('assists',-1)">-1</button>
+    </div>
+    <div class="section">
+      Fouls
       <button class="foul-btn" onclick="setTempFouls(1)">1</button>
       <button class="foul-btn" onclick="setTempFouls(2)">2</button>
       <button class="foul-btn" onclick="setTempFouls(3)">3</button>
@@ -98,21 +127,21 @@ h2 { margin: 20px 0 10px; }
     </div>
 
     <div class="section">
-      <h4>Rebounds</h4>
-      <button onclick="changeTempStat('rebounds',1)">+1</button>
-      <button onclick="changeTempStat('rebounds',-1)">-1</button>
+      Rebounds
+      <button class="stats-button" onclick="changeTempStat('rebounds',1)">+1</button>
+      <button class="stats-button" onclick="changeTempStat('rebounds',-1)">-1</button>
     </div>
 
     <div class="section">
-      <h4>Blocks</h4>
-      <button onclick="changeTempStat('blocks',1)">+1</button>
-      <button onclick="changeTempStat('blocks',-1)">-1</button>
+      Blocks
+      <button class="stats-button" onclick="changeTempStat('blocks',1)">+1</button>
+      <button class="stats-button" onclick="changeTempStat('blocks',-1)">-1</button>
     </div>
 
     <div class="section">
-      <h4>Steals</h4>
-      <button onclick="changeTempStat('steals',1)">+1</button>
-      <button onclick="changeTempStat('steals',-1)">-1</button>
+      Steals
+      <button class="stats-button" onclick="changeTempStat('steals',1)">+1</button>
+      <button class="stats-button" onclick="changeTempStat('steals',-1)">-1</button>
     </div>
 
   </div>
@@ -170,7 +199,8 @@ function render() {
             Fouls: ${player.fouls.filter(f=>f).length} |
             Rebounds: ${player.rebounds} |
             Blocks: ${(player.blocks||0)} |
-            Steals: ${(player.steals||0)}
+            Steals: ${(player.steals||0)} | 
+            Assists: ${player.assists || 0}
           </div>
         </div>`;
       if (gameStarted) {
@@ -372,6 +402,7 @@ function openStatsPopup(player) {
 function updatePopupTotals() {
   document.getElementById('popup-totals').innerHTML = `
     Points: <b>${activePlayer.points}</b> |
+    Assists: <b>${activePlayer.assists || 0}</b> |
     Fouls: <b>${activePlayer.fouls.filter(f=>f).length}</b> |
     Rebounds: <b>${activePlayer.rebounds}</b> |
     Blocks: <b>${activePlayer.blocks||0}</b> |
@@ -490,6 +521,7 @@ function restorePlayer(p) {
     ...p,
     fouls: Array.isArray(p.fouls) ? p.fouls.slice(0,5) : [false,false,false,false,false],
     points: p.points || 0,
+    assists: p.assists || 0,
     rebounds: p.rebounds || 0,
     blocks: p.blocks || 0,
     steals: p.steals || 0,
@@ -508,7 +540,19 @@ function resetGame() {
   // Clear local storage and in-memory state
   localStorage.removeItem('basketballGameData');
   courtSlots = [null, null, null, null, null];
-  benchPlayers = [];
+  benchPlayers = [
+    {number:0, name:"Avitam Z", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:6, name:"Ofir L", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:8, name:"Yuval G", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:9, name:"Chen H", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:10, name:"Guy BZ", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:11, name:"Dolev Z", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:15, name:"Pavel H", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:21, name:"Yaniv R", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:23, name:"Nir L", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:32, name:"Etay M", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
+    {number:77, name:"Aviram H", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null}
+  ];
   currentQuarter = 1;
   gameStarted = false;
 
@@ -516,20 +560,6 @@ function resetGame() {
   document.getElementById('start-game').disabled = false;
   document.getElementById('quarter-button').style.display = 'none';
 
- benchPlayers = [
-  {number:0, name:"Avitam Z", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:6, name:"Ofir L", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:8, name:"Yuval G", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:9, name:"Chen H", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:10, name:"Guy BZ", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:11, name:"Dolev Z", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:15, name:"Pavel H", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:21, name:"Yaniv R", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:23, name:"Nir L", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:32, name:"Etay M", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null},
-  {number:77, name:"Aviram H", points:0, rebounds:0, fouls:[false,false,false,false,false], totalMinutes:0, lastChangeTime:null, lastEntryQuarter:null, lastEntryMinute:null, blocks:0, steals:0, lastFoulQuarter:null}
-
-];
   saveGameData();  // ✅ Save the cleared state immediately
   render();
 }
@@ -546,6 +576,7 @@ function addPlayerFromPopup() {
     name,
     number: num,
     points: 0,
+    assists: 0,
     rebounds: 0,
     fouls: [false, false, false, false, false],
     totalMinutes: 0,
